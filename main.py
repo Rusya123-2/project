@@ -12,362 +12,254 @@ from aiogram.types import (
 )
 
 TOKEN = "8454016867:AAGFJKrH-itbUs_OqfigmtG6qtneKwKgp4o"
-CRYPTO_TOKEN = "CRYPTO_PAY_TOKEN"
-OWNER = "your_username"
+QKASSA_URL = "https://qassa.top/pay/YOUR_SHOP_ID"
+OWNER = "username"
 
-bot = Bot(token=TOKEN)
+bot = Bot(TOKEN)
 dp = Dispatcher()
 
-
-# =========================
-# DATABASE
-# =========================
-
-async def create_db():
-
-    async with aiosqlite.connect("shop.db") as db:
-
-        await db.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            purchases INTEGER DEFAULT 0,
-            balance INTEGER DEFAULT 0
-        )
-        ''')
-
-        await db.commit()
-
-
-# =========================
-# PRODUCTS
-# =========================
+product_photos = {
+    "gems": "https://i.imgur.com/4G6N9Gk.jpeg",
+    "pass": "https://i.imgur.com/6RL6p9x.jpeg",
+    "boost": "https://i.imgur.com/8KZP7kA.jpeg"
+}
 
 products = {
-
     "gems": [
-        ("30 Gems", 3),
-        ("80 Gems", 6),
-        ("170 Gems", 12),
-        ("360 Gems", 25),
-        ("950 Gems", 60)
+        ("30 Gems", 299),
+        ("80 Gems", 499),
+        ("170 Gems", 899)
     ],
 
-    "battlepass": [
-        ("Brawl Pass", 10),
-        ("Brawl Pass Plus", 20)
+    "pass": [
+        ("Brawl Pass", 799),
+        ("Brawl Pass Plus", 1499)
     ],
 
     "boost": [
-        ("Bronze → Silver", 10),
-        ("Silver → Gold", 20),
-        ("Gold → Diamond", 50),
-        ("Diamond → Mythic", 100),
-        ("Mythic → Legendary", 250)
-    ],
-
-    "quests": [
-        ("Daily Quests", 5),
-        ("Season Quests", 15),
-        ("Mastery", 20)
-    ],
-
-    "training": [
-        ("1 Hour Training", 15),
-        ("Aim Training", 20),
-        ("Rank Coaching", 30)
+        ("Silver -> Gold", 990),
+        ("Gold -> Diamond", 1990)
     ]
 }
 
 
-# =========================
-# MENUS
-# =========================
+async def create_db():
+    async with aiosqlite.connect("shop.db") as db:
+
+        await db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY,
+                purchases INTEGER DEFAULT 0,
+                balance INTEGER DEFAULT 0
+            )
+            """
+        )
+
+        await db.commit()
 
 
-def main_menu():
-
+def menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-
-            [
-                InlineKeyboardButton(
-                    text="💎 Gems",
-                    callback_data="gems"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="🎟 Battle Pass",
-                    callback_data="battlepass"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="🏆 Буст ранга",
-                    callback_data="boost"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="🎯 Квесты",
-                    callback_data="quests"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="🎓 Обучение",
-                    callback_data="training"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="👤 Профиль",
-                    callback_data="profile"
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="🛠 Поддержка",
-                    url=f"https://t.me/{OWNER}"
-                )
-            ]
+            [InlineKeyboardButton(text="💎 Gems", callback_data="gems")],
+            [InlineKeyboardButton(text="🎟 Pass", callback_data="pass")],
+            [InlineKeyboardButton(text="🏆 Boost", callback_data="boost")],
+            [InlineKeyboardButton(text="👤 Profile", callback_data="profile")],
+            [InlineKeyboardButton(text="⭐ Reviews", callback_data="reviews")],
+            [InlineKeyboardButton(text="🎁 Promo", callback_data="promo")],
+            [InlineKeyboardButton(text="🛠 Support", url=f"https://t.me/{OWNER}")]
         ]
     )
 
 
-# =========================
-# START
-# =========================
-
 @dp.message(CommandStart())
 async def start(message: Message):
 
-    text = f"""
-🔥 Добро пожаловать в Brawl Stars Shop!
+    text = (
+        "🔥 Brawl Stars Shop"
 
-━━━━━━━━━━━━━━━
 
-Здесь ты можешь:
+        "⚡ Fast delivery"
 
-💎 Купить Gems
-🎟 Купить Battle Pass
-🏆 Заказать буст ранга
-🎯 Выполнить квесты
-🎓 Заказать обучение
-⚡ Прокачать аккаунт
+        "💳 Automatic payment"
 
-━━━━━━━━━━━━━━━
+        "💰 Low prices"
 
-📖 Как купить:
-
-1️⃣ Выбери услугу
-2️⃣ Нажми купить
-3️⃣ Оплати через CryptoBot
-4️⃣ Получи товар автоматически
-
-━━━━━━━━━━━━━━━
-
-🎁 Бонусы:
-
-✅ Промокоды
-✅ Скидки
-✅ Подарки
-✅ Бонусы за покупки
-
-━━━━━━━━━━━━━━━
-
-🛠 Поддержка:
-@{OWNER}
-"""
-
-    await message.answer(
-        text,
-        reply_markup=main_menu()
+        "🛠 24/7 support"
     )
 
+    await message.answer(text, reply_markup=menu())
 
-# =========================
-# PROFILE
-# =========================
 
 @dp.callback_query(F.data == "profile")
 async def profile(callback: CallbackQuery):
 
-    text = f"""
-👤 Ваш профиль
+    async with aiosqlite.connect("shop.db") as db:
 
-🆔 ID: {callback.from_user.id}
+        cursor = await db.execute(
+            "SELECT purchases, balance FROM users WHERE user_id = ?",
+            (callback.from_user.id,)
+        )
 
-💰 Баланс: 0$
-🛒 Покупок: 0
-🎁 Бонусов: 0
+        user = await cursor.fetchone()
 
-━━━━━━━━━━━━━━━
+        if not user:
+            await db.execute(
+                "INSERT INTO users (user_id) VALUES (?)",
+                (callback.from_user.id,)
+            )
 
-🔥 VIP бонусы:
+            await db.commit()
 
-5 покупок → скидка 5%
-10 покупок → скидка 10%
-20 покупок → VIP статус
-"""
+            purchases = 0
+            balance = 0
 
-    await callback.message.edit_text(
-        text,
-        reply_markup=main_menu()
+        else:
+            purchases, balance = user
+
+    text = (
+        f"🆔 ID: {callback.from_user.id}"
+
+        f"🛒 Purchases: {purchases}"
+
+        f"💵 Balance: {balance}₽"
+
+
+        "👑 VIP Levels:"
+
+        "5 purchases -> 5% discount"
+
+        "10 purchases -> VIP"
     )
 
+    await callback.message.edit_text(text, reply_markup=menu())
 
-# =========================
-# SHOW PRODUCTS
-# =========================
 
-@dp.callback_query(
-    F.data.in_([
-        "gems",
-        "battlepass",
-        "boost",
-        "quests",
-        "training"
-    ])
-)
+@dp.callback_query(F.data == "reviews")
+async def reviews(callback: CallbackQuery):
+
+    text = (
+        "⭐ Reviews:"
+
+
+        "Good prices"
+
+        "Fast support"
+
+        "Instant payment"
+    )
+
+    await callback.message.edit_text(text, reply_markup=menu())
+
+
+@dp.callback_query(F.data == "promo")
+async def promo(callback: CallbackQuery):
+
+    text = (
+        "🎁 Promo codes:"
+
+
+        "START - 5%"
+
+        "VIP - 10%"
+    )
+
+    await callback.message.edit_text(text, reply_markup=menu())
+
+
+@dp.callback_query(F.data.in_(["gems", "pass", "boost"]))
 async def show_products(callback: CallbackQuery):
 
     category = callback.data
-
-    text = "🛒 Доступные товары:"
-
-
-
     keyboard = []
+    text = "🛒 Products:"
+
+
 
     for item, price in products[category]:
 
-        text += f"🎯 {item} — {price}$"
+        text += f"{item} - {price}₽"
 
 
         keyboard.append([
             InlineKeyboardButton(
-                text=f"Купить {item}",
+                text=f"🛒 Buy {item} 🛒",
                 callback_data=f"buy:{item}:{price}"
             )
         ])
 
     keyboard.append([
-        InlineKeyboardButton(
-            text="⬅️ Назад",
-            callback_data="back"
-        )
+        InlineKeyboardButton(text="⬅ Back", callback_data="back")
     ])
 
-    await callback.message.edit_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=keyboard
-        )
+    await callback.message.answer_photo(
+        photo=product_photos[category],
+        caption=text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
     )
 
 
-# =========================
-# CREATE PAYMENT
-# =========================
-
 async def create_invoice(amount):
 
-    url = "https://pay.crypt.bot/api/createInvoice"
+    pay_url = f"{QKASSA_URL}?amount={amount}"
 
-    headers = {
-        "Crypto-Pay-API-Token": CRYPTO_TOKEN
-    }
+    return pay_url
 
-    data = {
-        "asset": "USDT",
-        "amount": amount
-    }
-
-    async with aiohttp.ClientSession() as session:
-
-        async with session.post(
-            url,
-            headers=headers,
-            json=data
-        ) as response:
-
-            result = await response.json()
-
-            return result["result"]["pay_url"]
-
-
-# =========================
-# BUY
-# =========================
 
 @dp.callback_query(F.data.startswith("buy:"))
 async def buy(callback: CallbackQuery):
 
-    data = callback.data.split(":")
-
-    product = data[1]
-    price = data[2]
+    _, product, price = callback.data.split(":")
 
     pay_url = await create_invoice(price)
 
-    text = f"""
-💳 Оплата товара
+    if not pay_url:
+        await callback.message.delete()
 
-🎯 Товар: {product}
-💰 Цена: {price}$
+        await callback.message.answer(
+            "✅ Test mode: product successfully purchased",
+            reply_markup=menu()
+        )
 
-━━━━━━━━━━━━━━━
+        return
 
-После оплаты товар будет выдан автоматически.
-"""
+    text = (
+        f"🎯 Product: {product}"
+
+        f"💰 Price: {price}₽"
+
+
+        "💳 Payment after clicking button"
+    )
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="💳 Оплатить",
-                    url=pay_url
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="🛠 Поддержка",
-                    url=f"https://t.me/{OWNER}"
-                )
-            ]
+            [InlineKeyboardButton(text="💳 Pay", url=pay_url)],
+            [InlineKeyboardButton(text="🛠 Support", url=f"https://t.me/{OWNER}")],
+            [InlineKeyboardButton(text="🏠 Main Menu", callback_data="back")]
         ]
     )
 
-    await callback.message.edit_text(
-        text,
+    await callback.message.delete()
+
+    await callback.message.answer_photo(
+        photo=product_photos["gems"],
+        caption=text,
         reply_markup=keyboard
     )
 
 
-# =========================
-# BACK
-# =========================
-
 @dp.callback_query(F.data == "back")
 async def back(callback: CallbackQuery):
 
-    await callback.message.edit_text(
-        "🏠 Главное меню",
-        reply_markup=main_menu()
+    await callback.message.delete()
+
+    await callback.message.answer(
+        "🏠 Main Menu",
+        reply_markup=menu()
     )
 
-
-# =========================
-# RUN
-# =========================
 
 async def main():
 
@@ -380,3 +272,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
