@@ -11,6 +11,11 @@ from aiogram.types import (
     InlineKeyboardButton
 )
 
+#PROXY
+session = AiohttpSession(
+    proxy="socks5://127.0.0.1:10808"
+)
+
 TOKEN = "8454016867:AAGFJKrH-itbUs_OqfigmtG6qtneKwKgp4o"
 QKASSA_URL = "https://qassa.top/pay/YOUR_SHOP_ID"
 OWNER = "username"
